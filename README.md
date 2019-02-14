@@ -12,3 +12,5 @@ Listen for all files that match the pattern `*go` for changes (recursively) and 
 `coocoo -p .*go -c "go run main.go"`
 
 `-p`can be used multiple times like `-p .*go -p .*py -p...` and will watch all files that match those patterns.
+
+all hidden directories are ignored from watching

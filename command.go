@@ -33,7 +33,7 @@ func (c *Command) Restart() *Command {
 	return c
 }
 
-func (c Command) Run() error {
+func (c *Command) Run() error {
 	c.Cmd = exec.Command(c.name, c.args...)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr

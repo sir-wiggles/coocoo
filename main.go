@@ -6,9 +6,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -72,6 +74,10 @@ func NewWatcher(directory string, handler *ChangeHandler) (*Watcher, error) {
 }
 
 func (w Watcher) Watch() {
+
+	sig := make(chan os.Signal, 10)
+	signal.Notify(sig, os.Interrupt)
+
 	for {
 		select {
 		case err, ok := <-w.Errors:
@@ -82,6 +88,9 @@ func (w Watcher) Watch() {
 		case event := <-w.Events:
 			log.Println(event)
 			w.drain(event)
+		case <-sig:
+			kill(w.changeHandler.Cmd)
+			return
 		}
 	}
 }
@@ -147,6 +156,7 @@ func (c *ChangeHandler) Handle(changed map[string]fsnotify.Event) error {
 	c.Cmd = exec.Command(c.name, c.args...)
 	c.Cmd.Stdout = os.Stdout
 	c.Cmd.Stderr = os.Stderr
+	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	if err := c.Start(); err != nil {
 		return err
@@ -188,8 +198,9 @@ func kill(cmd *exec.Cmd) error {
 	if cmd == nil || cmd.Process == nil || cmd.Process.Pid == 0 {
 		return nil
 	}
+
 	color.Red("-pid %d", cmd.Process.Pid)
-	return cmd.Process.Kill()
+	return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 }
 
 func walk(watcher *fsnotify.Watcher, action string) error {
